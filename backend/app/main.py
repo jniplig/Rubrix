@@ -5,7 +5,13 @@ from pydantic import BaseModel
 from typing import List, Dict, Optional
 from datetime import datetime
 import uuid
+import json
+import os
 
+# --- Configuration ---
+ASSESSMENTS_FILE = "assessments.json"
+
+# --- FastAPI App Initialization ---
 app = FastAPI(title="Rubrix Basketball Assessment")
 
 app.add_middleware(
@@ -16,26 +22,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
-async def root():
-    return {"message": "Rubrix Basketball Assessment API"}
-
-@app.get("/basketball/rubric") 
-async def get_basketball_rubric():
-    return {
-        "title": "Year 7 Basketball Assessment",
-        "criteria": ["Dribbling", "Passing", "Shooting", "Defense"],
-        "students": 28,
-        "groups": 4
-    }
-# Add after your existing basketball rubric function
-
-from pydantic import BaseModel
-from typing import List, Dict, Optional
-from datetime import datetime
-import uuid
-
-# Data Models
+# --- Data Models ---
 class Student(BaseModel):
     id: str
     name: str
@@ -48,6 +35,23 @@ class Assessment(BaseModel):
     notes: Optional[str] = None
     timestamp: Optional[datetime] = None
 
+# --- Database (JSON file) ---
+def load_assessments():
+    if not os.path.exists(ASSESSMENTS_FILE):
+        return []
+    with open(ASSESSMENTS_FILE, "r") as f:
+        try:
+            return json.load(f)
+        except json.JSONDecodeError:
+            return []
+
+def save_assessments(db):
+    with open(ASSESSMENTS_FILE, "w") as f:
+        json.dump(db, f, indent=4, default=str)
+
+assessments_db = load_assessments()
+
+# --- Student Data (Hardcoded) ---
 # Your 28 students in 4 groups - perfect for PE class management
 STUDENTS = [
     # Group A (7 students)
@@ -87,8 +91,19 @@ STUDENTS = [
     Student(id="028", name="Jake Anderson", group="D"),
 ]
 
-# In-memory storage for assessments
-assessments_db = []
+# --- API Endpoints ---
+@app.get("/")
+async def root():
+    return {"message": "Rubrix Basketball Assessment API"}
+
+@app.get("/basketball/rubric") 
+async def get_basketball_rubric():
+    return {
+        "title": "Year 7 Basketball Assessment",
+        "criteria": ["Dribbling", "Passing", "Shooting", "Defense"],
+        "students": 28,
+        "groups": 4
+    }
 
 @app.get("/students")
 async def get_all_students():
@@ -124,6 +139,7 @@ async def create_assessment(assessment: Assessment):
     }
     
     assessments_db.append(assessment_data)
+    save_assessments(assessments_db)
     return assessment_data
 
 @app.get("/assessments")
@@ -178,18 +194,28 @@ async def get_class_summary():
     }
 
 @app.get("/mobile/lesson/active")
-async def get_active_lesson():
-    """Mobile-optimized endpoint for active lesson view"""
+async def get_active_lesson(group: str, criterion: str):
+    """Mobile-optimized endpoint for active lesson view."""
+    group_students = [s for s in STUDENTS if s.group.upper() == group.upper()]
+    if not group_students:
+        raise HTTPException(status_code=404, detail=f"No students found in group {group}")
+
+    # Get assessments for the current group and criterion
+    assessed_student_ids = {
+        a["student_id"] for a in assessments_db 
+        if a["student_group"] == group.upper() and a["criterion"].lower() == criterion.lower()
+    }
+
+    lesson_status = []
+    for student in group_students:
+        lesson_status.append({
+            "student_id": student.id,
+            "name": student.name,
+            "assessed": student.id in assessed_student_ids
+        })
+
     return {
-        "lesson_title": "Year 7 Basketball Assessment",
-        "location": "Sports Hall",
-        "date": datetime.now().date(),
-        "groups": [
-            {"id": "A", "name": "Group A", "students": [s for s in STUDENTS if s.group == "A"], "count": 7},
-            {"id": "B", "name": "Group B", "students": [s for s in STUDENTS if s.group == "B"], "count": 7},
-            {"id": "C", "name": "Group C", "students": [s for s in STUDENTS if s.group == "C"], "count": 7},
-            {"id": "D", "name": "Group D", "students": [s for s in STUDENTS if s.group == "D"], "count": 7}
-        ],
-        "criteria": ["dribbling", "passing", "shooting", "defense"],
-        "timer": {"rotation_time": 900, "current_rotation": 1}  # 15 minutes
+        "group": group.upper(),
+        "criterion": criterion,
+        "students": lesson_status
     }
