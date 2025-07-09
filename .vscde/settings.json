@@ -1,0 +1,43 @@
+{
+  "editor.formatOnSave": true,
+  "editor.tabSize": 2,
+  "editor.rulers": [80, 120],
+  "editor.renderWhitespace": "boundary",
+  "editor.codeActionsOnSave": {
+    "source.fixAll": true,
+    "source.organizeImports": true
+  },
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/*.pyc": true,
+    "**/*.pyo": true,
+    "**/*.log": true,
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/build": true
+  },
+  "python.defaultInterpreterPath": "python",
+  "python.analysis.typeCheckingMode": "basic",
+  "python.formatting.provider": "autopep8",
+  "python.linting.enabled": true,
+  "python.linting.pylintEnabled": true,
+  "python.linting.flake8Enabled": false,
+  "prettier.singleQuote": true,
+  "prettier.semi": false,
+  "terminal.integrated.shellIntegration.enabled": true,
+  "todo-tree.general.tags": [
+    "TODO",
+    "FIXME",
+    "NOTE",
+    "BUG",
+    "HACK"
+  ],
+  "todo-tree.highlights.defaultHighlight": {
+    "icon": "check",
+    "type": "text",
+    "foreground": "yellow",
+    "background": "black"
+  }
+}
